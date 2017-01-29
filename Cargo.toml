@@ -1,0 +1,13 @@
+[package]
+name = "multicache"
+version = "0.1.0"
+authors = ["Pedro Côrte-Real <pedro@pedrocr.net>"]
+description = "An LRU cache where each object has a given weight"
+#documentation = "https://docs.rs/rawloader/"
+#homepage = "..."
+repository = "https://github.com/pedrocr/multicache"
+license = "LGPL-2.1"
+#categories = []
+
+[dependencies]
+linked-hash-map = "0.3.0"
