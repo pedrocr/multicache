@@ -1,3 +1,46 @@
+//! A cache that will keep track of the total size of the elements put in and evict
+//! based on that value. The cache is fully thread safe and returns Arc references.
+//!
+//! # Example
+//! ```rust
+//!  extern crate multicache;
+//!  use multicache::MultiCache;
+//!  use std::sync::Arc;
+//!
+//!  fn main() {
+//!    let cache = MultiCache::new(200);
+//!
+//!    cache.put(0, 0, 100);
+//!    cache.put(1, 1, 100);
+//!    cache.put(2, 2, 100);
+//!
+//!    assert_eq!(cache.get(0), None);
+//!    assert_eq!(cache.get(1), Some(Arc::new(1)));
+//!    assert_eq!(cache.get(2), Some(Arc::new(2)));
+//!  }
+//! ```
+//!
+//! Doing a get bumps the value to be the last to be evicted:
+//!
+//! ```rust
+//!  extern crate multicache;
+//!  use multicache::MultiCache;
+//!  use std::sync::Arc;
+//!
+//!  fn main() {
+//!    let cache = MultiCache::new(200);
+//!
+//!    cache.put(0, 0, 100);
+//!    cache.put(1, 1, 100);
+//!    cache.get(0);
+//!    cache.put(2, 2, 100);
+//!
+//!    assert_eq!(cache.get(0), Some(Arc::new(0)));
+//!    assert_eq!(cache.get(1), None);
+//!    assert_eq!(cache.get(2), Some(Arc::new(2)));
+//!  }
+//! ```
+
 extern crate linked_hash_map;
 use linked_hash_map::LinkedHashMap;
 use std::hash::Hash;
@@ -28,6 +71,7 @@ pub struct MultiCache<K,V> {
 }
 
 impl<K,V> MultiCache<K,V> {
+  /// Create a new cache which will at most hold a total of bytesize in elements
   pub fn new(bytesize: usize) -> MultiCache<K,V> 
   where K: Hash+Eq {
     MultiCache {
@@ -39,6 +83,9 @@ impl<K,V> MultiCache<K,V> {
     }
   }
 
+  /// Add a new element by key/value with a given bytesize, if after inserting this
+  /// element we would be going over the bytesize of the cache first enough elements are
+  /// evicted for that to not be the case
   pub fn put(&self, key: K, value: V, bytes: usize) 
   where K: Hash+Eq {
     let mut mparts = self.parts.lock().unwrap();
@@ -54,6 +101,8 @@ impl<K,V> MultiCache<K,V> {
     mparts.totalsize += bytes;
   }
 
+  /// Get an element from the cache, updating it so it's now the most recently used and
+  /// thus the last to be evicted
   pub fn get(&self, key: K) -> Option<Arc<V>>
   where K: Hash+Eq {
     let mut mparts = self.parts.lock().unwrap();
