@@ -8,14 +8,14 @@ Usage
 extern crate multicache;
 use multicache::MultiCache;
 use std::sync::Arc;
-//!
+
 fn main() {
   let cache = MultiCache::new(200);
-//!
+
   cache.put(0, 0, 100);
   cache.put(1, 1, 100);
   cache.put(2, 2, 100);
-//!
+
   assert_eq!(cache.get(0), None);
   assert_eq!(cache.get(1), Some(Arc::new(1)));
   assert_eq!(cache.get(2), Some(Arc::new(2)));
