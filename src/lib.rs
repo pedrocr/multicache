@@ -45,8 +45,8 @@ extern crate linked_hash_map;
 use linked_hash_map::LinkedHashMap;
 use std::hash::Hash;
 use std::sync::{Mutex, Arc};
+use std::fmt;
 
-#[derive(Debug)]
 struct MultiCacheItem<V> {
   val: V,
   bytes: usize,
@@ -67,6 +67,14 @@ struct MultiCacheParts<K,V> {
   maxsize: usize,
 }
 
+impl<K,V> fmt::Debug for MultiCacheParts<K,V> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "{{ {} totalsize, {} maxsize }}",
+      self.totalsize, self.maxsize)
+  }
+}
+
+#[derive(Debug)]
 pub struct MultiCache<K,V> {
   parts: Mutex<MultiCacheParts<K,V>>,
 }
