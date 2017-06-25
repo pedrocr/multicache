@@ -1,6 +1,6 @@
 [package]
 name = "multicache"
-version = "0.1.3"
+version = "0.2.0"
 authors = ["Pedro Côrte-Real <pedro@pedrocr.net>"]
 description = "An LRU cache where each object has a given weight"
 documentation = "https://docs.rs/multicache/"
