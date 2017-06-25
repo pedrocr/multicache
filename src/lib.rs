@@ -46,6 +46,7 @@ use linked_hash_map::LinkedHashMap;
 use std::hash::Hash;
 use std::sync::{Mutex, Arc};
 
+#[derive(Debug)]
 struct MultiCacheItem<V> {
   val: V,
   bytes: usize,
