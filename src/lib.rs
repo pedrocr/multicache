@@ -151,6 +151,13 @@ impl<K,V> MultiCache<K,V> {
     let mut mparts = self.parts.lock().unwrap();
     (*mparts).aliases.insert(newkey, existing);
   }
+
+  /// Check if a given key exists in the cache
+  pub fn contains_key(&self, key: &K) -> bool
+  where K: Hash+Eq+Copy {
+    let mparts = self.parts.lock().unwrap();
+    (*mparts).hash.contains_key(&key)
+  }
 }
 
 #[cfg(test)]
@@ -196,5 +203,15 @@ mod tests {
     assert_eq!(cache.get(0), Some(Arc::new(0)));
     assert_eq!(cache.get(1), Some(Arc::new(0)));
     assert_eq!(cache.get(2), Some(Arc::new(2)));
+  }
+
+  #[test]
+  fn contains() {
+    let cache = MultiCache::new(200);
+
+    cache.put(0, 0, 100);
+
+    assert_eq!(cache.contains_key(&0), true);
+    assert_eq!(cache.contains_key(&1), false);
   }
 }
