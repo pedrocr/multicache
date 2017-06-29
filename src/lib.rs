@@ -156,7 +156,14 @@ impl<K,V> MultiCache<K,V> {
   pub fn contains_key(&self, key: &K) -> bool
   where K: Hash+Eq+Copy {
     let mparts = self.parts.lock().unwrap();
-    (*mparts).hash.contains_key(&key)
+    if (*mparts).hash.contains_key(&key) {
+      return true
+    }
+    if let Some(newkey) = (*mparts).aliases.get(key) {
+      return (*mparts).hash.contains_key(&newkey)
+    }
+
+    false
   }
 }
 
@@ -207,11 +214,19 @@ mod tests {
 
   #[test]
   fn contains() {
-    let cache = MultiCache::new(200);
+    let cache = MultiCache::new(100);
 
     cache.put(0, 0, 100);
+    cache.alias(0, 1);
 
     assert_eq!(cache.contains_key(&0), true);
+    assert_eq!(cache.contains_key(&1), true);
+    assert_eq!(cache.contains_key(&2), false);
+
+    cache.put(2, 2, 100);
+
+    assert_eq!(cache.contains_key(&0), false);
     assert_eq!(cache.contains_key(&1), false);
+    assert_eq!(cache.contains_key(&2), true);
   }
 }
