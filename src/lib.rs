@@ -14,9 +14,9 @@
 //!    cache.put(1, 1, 100);
 //!    cache.put(2, 2, 100);
 //!
-//!    assert_eq!(cache.get(0), None);
-//!    assert_eq!(cache.get(1), Some(Arc::new(1)));
-//!    assert_eq!(cache.get(2), Some(Arc::new(2)));
+//!    assert_eq!(cache.get(&0), None);
+//!    assert_eq!(cache.get(&1), Some(Arc::new(1)));
+//!    assert_eq!(cache.get(&2), Some(Arc::new(2)));
 //!  }
 //! ```
 //!
@@ -32,12 +32,12 @@
 //!
 //!    cache.put(0, 0, 100);
 //!    cache.put(1, 1, 100);
-//!    cache.get(0);
+//!    cache.get(&0);
 //!    cache.put(2, 2, 100);
 //!
-//!    assert_eq!(cache.get(0), Some(Arc::new(0)));
-//!    assert_eq!(cache.get(1), None);
-//!    assert_eq!(cache.get(2), Some(Arc::new(2)));
+//!    assert_eq!(cache.get(&0), Some(Arc::new(0)));
+//!    assert_eq!(cache.get(&1), None);
+//!    assert_eq!(cache.get(&2), Some(Arc::new(2)));
 //!  }
 //! ```
 
@@ -99,7 +99,7 @@ impl<K,V> MultiCache<K,V> {
   /// element we would be going over the bytesize of the cache first enough elements are
   /// evicted for that to not be the case
   pub fn put(&self, key: K, value: V, bytes: usize) 
-  where K: Hash+Eq+Copy {
+  where K: Hash+Eq {
     let mut mparts = self.parts.lock().unwrap();
     while mparts.totalsize + bytes > mparts.maxsize {
       match mparts.hash.pop_front() {
@@ -115,24 +115,19 @@ impl<K,V> MultiCache<K,V> {
 
   /// Get an element from the cache, updating it so it's now the most recently used and
   /// thus the last to be evicted
-  pub fn get(&self, key: K) -> Option<Arc<V>>
-  where K: Hash+Eq+Copy {
-    let alias = {
-      let mut mparts = self.parts.lock().unwrap();
-      if let Some(val) = mparts.hash.get_refresh(&key) {
+  pub fn get(&self, key: &K) -> Option<Arc<V>>
+  where K: Hash+Eq {
+    let mut mparts = &mut *(self.parts.lock().unwrap());
+
+    if let Some(val) = mparts.hash.get_refresh(key) {
+      return Some(val.val.clone())
+    }
+
+    // If direct failed try an alias
+    if let Some(val) = mparts.aliases.get(&key) {
+      if let Some(val) = mparts.hash.get_refresh(&val) {
         return Some(val.val.clone())
       }
-
-      // If direct failed try an alias
-      if let Some(val) = mparts.aliases.get(&key) {
-        Some(*val)
-      } else {
-        None
-      }
-    };
-
-    if let Some(val) = alias {
-      return self.get(val)
     }
 
     None
@@ -140,7 +135,7 @@ impl<K,V> MultiCache<K,V> {
 
   /// Alias a new key to an existing one
   pub fn alias(&self, existing: K, newkey: K)
-  where K: Hash+Eq+Copy {
+  where K: Hash+Eq {
     if existing == newkey {
       return
     }
@@ -154,7 +149,7 @@ impl<K,V> MultiCache<K,V> {
 
   /// Check if a given key exists in the cache
   pub fn contains_key(&self, key: &K) -> bool
-  where K: Hash+Eq+Copy {
+  where K: Hash+Eq {
     let mparts = self.parts.lock().unwrap();
     if (*mparts).hash.contains_key(&key) {
       return true
@@ -180,9 +175,9 @@ mod tests {
     cache.put(1, 1, 100);
     cache.put(2, 2, 100);
 
-    assert_eq!(cache.get(2), Some(Arc::new(2)));
-    assert_eq!(cache.get(1), Some(Arc::new(1)));
-    assert_eq!(cache.get(0), None);
+    assert_eq!(cache.get(&2), Some(Arc::new(2)));
+    assert_eq!(cache.get(&1), Some(Arc::new(1)));
+    assert_eq!(cache.get(&0), None);
   }
 
   #[test]
@@ -191,12 +186,12 @@ mod tests {
 
     cache.put(0, 0, 100);
     cache.put(1, 1, 100);
-    cache.get(0);
+    cache.get(&0);
     cache.put(2, 2, 100);
 
-    assert_eq!(cache.get(0), Some(Arc::new(0)));
-    assert_eq!(cache.get(1), None);
-    assert_eq!(cache.get(2), Some(Arc::new(2)));
+    assert_eq!(cache.get(&0), Some(Arc::new(0)));
+    assert_eq!(cache.get(&1), None);
+    assert_eq!(cache.get(&2), Some(Arc::new(2)));
   }
 
   #[test]
@@ -207,9 +202,9 @@ mod tests {
     cache.alias(0, 1);
     cache.put(2, 2, 100);
 
-    assert_eq!(cache.get(0), Some(Arc::new(0)));
-    assert_eq!(cache.get(1), Some(Arc::new(0)));
-    assert_eq!(cache.get(2), Some(Arc::new(2)));
+    assert_eq!(cache.get(&0), Some(Arc::new(0)));
+    assert_eq!(cache.get(&1), Some(Arc::new(0)));
+    assert_eq!(cache.get(&2), Some(Arc::new(2)));
   }
 
   #[test]
