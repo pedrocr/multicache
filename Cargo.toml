@@ -6,7 +6,7 @@ description = "An LRU cache where each object has a given weight"
 documentation = "https://docs.rs/multicache/"
 #homepage = "..."
 repository = "https://github.com/pedrocr/multicache"
-license = "LGPL-2.1"
+license = "LGPL-3.0-only"
 #categories = []
 
 [dependencies]
