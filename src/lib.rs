@@ -43,7 +43,6 @@
 
 extern crate linked_hash_map;
 use linked_hash_map::LinkedHashMap;
-use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::{Mutex, Arc};
 use std::fmt;
@@ -64,7 +63,6 @@ impl<V> MultiCacheItem<V> {
 
 struct MultiCacheParts<K,V> {
   hash: LinkedHashMap<K,MultiCacheItem<Arc<V>>>,
-  aliases: HashMap<K,K>,
   totalsize: usize,
   maxsize: usize,
 }
@@ -88,7 +86,6 @@ impl<K,V> MultiCache<K,V> {
     MultiCache {
       parts: Mutex::new(MultiCacheParts{
         hash: LinkedHashMap::new(),
-        aliases: HashMap::new(),
         totalsize: 0,
         maxsize: bytesize,
       }),
@@ -117,34 +114,13 @@ impl<K,V> MultiCache<K,V> {
   /// thus the last to be evicted
   pub fn get(&self, key: &K) -> Option<Arc<V>>
   where K: Hash+Eq {
-    let mut mparts = &mut *(self.parts.lock().unwrap());
+    let mparts = &mut *(self.parts.lock().unwrap());
 
     if let Some(val) = mparts.hash.get_refresh(key) {
       return Some(val.val.clone())
     }
 
-    // If direct failed try an alias
-    if let Some(val) = mparts.aliases.get(&key) {
-      if let Some(val) = mparts.hash.get_refresh(&val) {
-        return Some(val.val.clone())
-      }
-    }
-
     None
-  }
-
-  /// Alias a new key to an existing one
-  pub fn alias(&self, existing: K, newkey: K)
-  where K: Hash+Eq {
-    if existing == newkey {
-      return
-    }
-
-    // FIXME: aliases are never evicted. A better design would be to make MultiCacheItem
-    //        an enum that can both be a cache entry and an alias and then do normal eviction
-
-    let mut mparts = self.parts.lock().unwrap();
-    (*mparts).aliases.insert(newkey, existing);
   }
 
   /// Check if a given key exists in the cache
@@ -153,9 +129,6 @@ impl<K,V> MultiCache<K,V> {
     let mparts = self.parts.lock().unwrap();
     if (*mparts).hash.contains_key(&key) {
       return true
-    }
-    if let Some(newkey) = (*mparts).aliases.get(key) {
-      return (*mparts).hash.contains_key(&newkey)
     }
 
     false
@@ -195,33 +168,17 @@ mod tests {
   }
 
   #[test]
-  fn aliases() {
-    let cache = MultiCache::new(200);
-
-    cache.put(0, 0, 100);
-    cache.alias(0, 1);
-    cache.put(2, 2, 100);
-
-    assert_eq!(cache.get(&0), Some(Arc::new(0)));
-    assert_eq!(cache.get(&1), Some(Arc::new(0)));
-    assert_eq!(cache.get(&2), Some(Arc::new(2)));
-  }
-
-  #[test]
   fn contains() {
     let cache = MultiCache::new(100);
 
     cache.put(0, 0, 100);
-    cache.alias(0, 1);
 
     assert_eq!(cache.contains_key(&0), true);
-    assert_eq!(cache.contains_key(&1), true);
     assert_eq!(cache.contains_key(&2), false);
 
     cache.put(2, 2, 100);
 
     assert_eq!(cache.contains_key(&0), false);
-    assert_eq!(cache.contains_key(&1), false);
     assert_eq!(cache.contains_key(&2), true);
   }
 }
