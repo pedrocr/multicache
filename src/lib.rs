@@ -53,9 +53,9 @@ struct MultiCacheItem<V> {
 }
 
 impl<V> MultiCacheItem<V> {
-  pub fn new(val: V, bytes: usize) -> MultiCacheItem<Arc<V>> {
+  pub fn new(val: Arc<V>, bytes: usize) -> MultiCacheItem<Arc<V>> {
     MultiCacheItem {
-      val: Arc::new(val),
+      val: val,
       bytes: bytes,
     }
   }
@@ -96,6 +96,14 @@ impl<K,V> MultiCache<K,V> {
   /// element we would be going over the bytesize of the cache first enough elements are
   /// evicted for that to not be the case
   pub fn put(&self, key: K, value: V, bytes: usize) 
+  where K: Hash+Eq {
+    self.put_arc(key, Arc::new(value), bytes)
+  }
+
+  /// Add a new element by key/Arc<value> with a given bytesize, if after inserting this
+  /// element we would be going over the bytesize of the cache first enough elements are
+  /// evicted for that to not be the case
+  pub fn put_arc(&self, key: K, value: Arc<V>, bytes: usize) 
   where K: Hash+Eq {
     let mut mparts = self.parts.lock().unwrap();
     while mparts.totalsize + bytes > mparts.maxsize {
@@ -180,5 +188,17 @@ mod tests {
 
     assert_eq!(cache.contains_key(&0), false);
     assert_eq!(cache.contains_key(&2), true);
+  }
+
+  #[test]
+  fn puts() {
+    let cache = MultiCache::new(200);
+
+    cache.put(0, 0, 100);
+    cache.put_arc(1, Arc::new(1), 100);
+
+    assert_eq!(cache.get(&0), Some(Arc::new(0)));
+    assert_eq!(cache.get(&1), Some(Arc::new(1)));
+
   }
 }
