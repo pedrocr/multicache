@@ -106,6 +106,13 @@ impl<K,V> MultiCache<K,V> {
   pub fn put_arc(&self, key: K, value: Arc<V>, bytes: usize) 
   where K: Hash+Eq {
     let mut mparts = self.parts.lock().unwrap();
+
+    // First remove this key if it exists already, reclaiming that space
+    if let Some(val) = (*mparts).hash.remove(&key) {
+      mparts.totalsize -= val.bytes;
+    }
+
+    // Now if we still need it reclaim more space
     while mparts.totalsize + bytes > mparts.maxsize {
       match mparts.hash.pop_front() {
         None => break, // probably even the only item is larger than the max
@@ -114,6 +121,8 @@ impl<K,V> MultiCache<K,V> {
         }
       }
     }
+
+    // Finally save the value and take up the space
     (*mparts).hash.insert(key, MultiCacheItem::new(value,bytes));
     mparts.totalsize += bytes;
   }
@@ -159,6 +168,19 @@ mod tests {
     assert_eq!(cache.get(&2), Some(Arc::new(2)));
     assert_eq!(cache.get(&1), Some(Arc::new(1)));
     assert_eq!(cache.get(&0), None);
+  }
+
+  #[test]
+  fn evicts_no_repeats() {
+    let cache = MultiCache::new(200);
+
+    cache.put(0, 0, 100);
+    cache.put(1, 1, 100);
+    cache.put(1, 2, 100);
+    cache.put(1, 3, 100);
+
+    assert_eq!(cache.get(&1), Some(Arc::new(3)));
+    assert_eq!(cache.get(&0), Some(Arc::new(0)));
   }
 
   #[test]
