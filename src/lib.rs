@@ -105,12 +105,10 @@ impl<K,V> MultiCache<K,V> {
   /// evicted for that to not be the case
   pub fn put_arc(&self, key: K, value: Arc<V>, bytes: usize) 
   where K: Hash+Eq {
-    let mut mparts = self.parts.lock().unwrap();
-
     // First remove this key if it exists already, reclaiming that space
-    if let Some(val) = (*mparts).hash.remove(&key) {
-      mparts.totalsize -= val.bytes;
-    }
+    self.remove(&key);
+
+    let mut mparts = self.parts.lock().unwrap();
 
     // Now if we still need it reclaim more space
     while mparts.totalsize + bytes > mparts.maxsize {
@@ -138,6 +136,20 @@ impl<K,V> MultiCache<K,V> {
     }
 
     None
+  }
+
+  /// Remove an element from the cache, returning it if it exists
+  pub fn remove(&self, key: &K) -> Option<Arc<V>>
+  where K: Hash+Eq {
+    let mut mparts = self.parts.lock().unwrap();
+
+    // First remove this key if it exists already, reclaiming that space
+    if let Some(val) = (*mparts).hash.remove(&key) {
+      mparts.totalsize -= val.bytes;
+      Some(val.val)
+    } else {
+      None
+    }
   }
 
   /// Check if a given key exists in the cache
@@ -221,6 +233,16 @@ mod tests {
 
     assert_eq!(cache.get(&0), Some(Arc::new(0)));
     assert_eq!(cache.get(&1), Some(Arc::new(1)));
+  }
 
+  #[test]
+  fn removes() {
+    let cache = MultiCache::new(200);
+
+    cache.put(0, 0, 100);
+
+    assert_eq!(cache.remove(&0), Some(Arc::new(0)));
+    assert_eq!(cache.remove(&0), None);
+    assert_eq!(cache.get(&0), None);
   }
 }
