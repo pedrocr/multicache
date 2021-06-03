@@ -47,3 +47,10 @@ fn main() {
   assert_eq!(cache.get(2), Some(Arc::new(2)));
 }
 ```
+
+Contributing
+------------
+
+Bug reports and pull requests welcome at https://github.com/pedrocr/multicache
+
+Meet us at #chimper on irc.libera.chat if you need to discuss a feature or issue in detail or even just for general chat. To just start chatting go to https://web.libera.chat/#chimper
