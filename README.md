@@ -1,3 +1,8 @@
+# multicache
+
+[![Build Status](https://travis-ci.com/pedrocr/multicache.svg?branch=master)](https://travis-ci.com/pedrocr/multicache)
+[![Crates.io](https://img.shields.io/crates/v/multicache.svg)](https://crates.io/crates/multicache)
+
 A cache that will keep track of the total size of the elements put in and evict
 based on that value. The cache is fully thread safe and returns Arc references.
 
